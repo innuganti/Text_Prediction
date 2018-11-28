@@ -1,0 +1,371 @@
+---
+title: "NGramFreq"
+author: "innuganti"
+date: "October 22, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+list.of.packages <- c("stringi", "tm", "wordcloud","rJava", "RColorBrewer","kableExtra","pwr","slam","ngram",
+
+                      "quanteda","tokenizers","survey","RSQLite","NLP")
+
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+
+if(length(new.packages)) install.packages(new.packages, repos="http://cran.rstudio.com/")
+
+library(dplyr)
+
+library(ggplot2)
+
+library(stringi)
+
+library(tm)
+
+library(wordcloud)
+
+library(RColorBrewer)
+
+library(SnowballC)
+
+library(RWeka)
+
+library(knitr)
+
+library(kableExtra)
+
+library(pwr)
+
+library(survey)
+
+library(RSQLite)
+
+library(plotly)
+
+library(devtools)
+
+library(slam)
+
+library(tokenizers)
+
+library(quanteda)
+
+library(ngram)
+
+library(NLP)
+
+```
+
+
+### Introduction
+
+ 
+
+This report provides the capsulization of the exploratory analysis of the text data, in addition to creating a predictive model
+
+ 
+
+```{r}
+setwd('C:/Users/innugantii/Desktop/Indu/Coursera/Project Final/final/en_US')
+
+ 
+file.list = c("en_US.blogs.txt", "en_US.news.txt", "en_US.twitter.txt")
+
+text <- list(blogs = "", news = "", twitter = "")
+
+ 
+data.summary <- matrix(0, nrow = 3, ncol = 3, dimnames = list(c("blogs", "news", "twitter"),
+
+                                                              c("file size, Mb", "lines", "words")))
+
+for (i in 1:3) {
+
+  con <- file(file.list[i], "rb")
+
+  text[[i]] <- readLines(con, encoding = "UTF-8",skipNul = TRUE)
+
+  close(con)
+
+  data.summary[i,1] <- round(file.info(file.list[i])$size / 1024^2, 2)
+
+  data.summary[i,2] <- length(text[[i]])
+
+  data.summary[i,3] <- sum(stri_count_words(text[[i]]))
+
+}
+
+ 
+```
+
+ 
+
+### Summary
+
+ 
+
+```{r}
+data.summary %>%
+  kable() %>%
+  kable_styling()
+
+```
+
+
+However, these data sets are very large, will proceed with a small sample (0.005%) of the each data set, then combine them into one data set which shall be used for the analysis.
+
+ 
+
+```{r}
+
+## Create the sample
+
+set.seed(1234)
+
+blogs <- sample(text$blogs, 0.005*length(text$blogs))
+
+news<- sample(text$news, 0.005*length(text$news))
+
+twitter <- sample(text$twitter, 0.005*length(text$twitter))
+
+sample_data <- c(blogs, news, twitter)
+
+ 
+
+sumWords <- sum(stri_count_words(sample_data))
+
+sumWords
+
+writeLines(sample_data, "sample_data.txt")
+
+```
+
+
+### Create Corpus
+
+Cleaning the Data
+
+ 
+
+```{r, message=FALSE, warning=FALSE}
+
+sample_data <- iconv(sample_data, 'UTF-8', 'ASCII')
+
+corpus <- Corpus(VectorSource(as.data.frame(sample_data, stringsAsFactors = FALSE)))
+
+ 
+
+corpus <- corpus %>%
+
+  tm_map(removeWords, stopwords("english")) %>% # remove stopwords       
+
+  tm_map(tolower) %>%                   # Converts all text to lower case
+
+  tm_map(removeNumbers) %>%             # Remove Numbers
+
+  tm_map(removePunctuation) %>%         # Remove punctuation marks
+
+
+  tm_map(stripWhitespace) %>%           # Remove whitespaces
+
+  tm_map(PlainTextDocument)         # An intermediate preprocessing step
+
+ 
+
+```
+
+ 
+
+### Build Tokenizers:
+Split the sentence into individual words
+
+### Unigram
+
+```{r}
+
+unigram <- NGramTokenizer(corpus, Weka_control(min = 1, max = 1))
+
+unigram.df <- data.frame(table(unigram))
+
+unigram.df <- unigram.df[order(unigram.df$Freq, decreasing = TRUE),]
+
+ 
+
+wordcloud(unigram.df$unigram, unigram.df$Freq, max.words=125, random.order=TRUE, colors=brewer.pal(8, "Dark2"))
+
+text(x=0.5, y=0, "Word Cloud of Unigram")
+
+```
+
+ 
+
+Frequency of Unigram
+
+```{r}
+
+# Plot area set up
+
+layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
+
+ 
+
+## Unigram Frequency
+
+plotUni <- ggplot(head(unigram.df,25), aes(reorder(unigram,Freq), Freq)) +
+
+  geom_bar(stat="identity",fill = "brown") + coord_flip() +
+
+  xlab("Unigrams") + ylab("Frequency") +
+
+  ggtitle("Most frequently used words - Unigrams")
+
+ 
+
+ggplotly(plotUni)
+
+```
+
+
+### Bigram
+
+```{r}
+
+bigram <- NGramTokenizer(corpus, Weka_control(min = 2, max = 2))
+
+bigram.df <- data.frame(table(bigram))
+
+bigram.df <- bigram.df[order(bigram.df$Freq, decreasing = TRUE),]
+
+ 
+
+wordcloud(bigram.df$bigram, bigram.df$Freq, max.words=125, random.order=TRUE, colors=brewer.pal(8, "Dark2"))
+
+text(x=0.5, y=0, "Word Cloud of Bigram")
+
+```
+
+ 
+
+Frequency of Bigram
+
+```{r}
+
+layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
+
+ 
+
+## Bigram Frequency
+
+plotBi <- ggplot(head(bigram.df,25), aes(reorder(bigram,Freq), Freq)) +
+
+  geom_bar(stat="identity",fill = "seagreen") + coord_flip() +
+
+  xlab("Bigrams") + ylab("Frequency") +
+
+  ggtitle("Most frequently used words - Bigrams")
+
+ 
+
+ggplotly(plotBi)
+
+```
+
+
+### Trigram
+
+```{r}
+
+trigram <- NGramTokenizer(corpus, Weka_control(min = 3, max = 3))
+
+trigram.df <- data.frame(table(trigram))
+
+trigram.df <- trigram.df[order(trigram.df$Freq, decreasing = TRUE),]
+
+ 
+
+wordcloud(trigram.df$trigram, trigram.df$Freq, max.words=125, random.order=TRUE, colors=brewer.pal(8, "Dark2"))
+
+text(x=0.5, y=0, "Word Cloud of Trigram")
+
+```
+
+ 
+
+Frequency of Trigram
+
+```{r}
+
+layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
+
+ 
+
+## Trigram Frequency
+
+plotTri <- ggplot(head(trigram.df,25), aes(reorder(trigram,Freq), Freq)) +
+
+  geom_bar(stat="identity",fill = "blue") + coord_flip() +
+
+  xlab("Trigrams") + ylab("Frequency") +
+
+  ggtitle("Most frequently used words - Trigrams")
+
+ 
+
+ggplotly(plotTri)
+
+```
+
+
+### Quadgram
+
+
+```{r}
+
+quadgram <- NGramTokenizer(corpus, Weka_control(min = 4, max = 4))
+
+quadgram.df <- data.frame(table(quadgram))
+
+quadgram.df <- quadgram.df[order(quadgram.df$Freq, decreasing = TRUE),]
+
+ 
+
+wordcloud(quadgram.df$quadgram, quadgram.df$Freq, max.words=125, random.order=TRUE, colors=brewer.pal(8, "Dark2"))
+
+text(x=0.5, y=0, "Word Cloud of Quadgram")
+
+```
+
+ 
+
+Frequency of Quadgram
+
+```{r}
+
+layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE))
+
+ 
+
+## Quadgram Frequency
+
+plotQuad <- ggplot(head(quadgram.df,25), aes(reorder(quadgram,Freq), Freq)) +
+
+  geom_bar(stat="identity",fill = "purple") + coord_flip() +
+
+  xlab("Quadgrams") + ylab("Frequency") +
+
+  ggtitle("Most frequently used words - Quadgrams")
+
+ 
+
+ggplotly(plotQuad)
+
+```
+
+### Further Analysis:
+
+Planning to develop and test Prediction Algorithm and Shiny app:
+
++ Build prediction model based on the n-gram frequency of words
+
++ Integrate the model into shiny app which can be used as interactive application
