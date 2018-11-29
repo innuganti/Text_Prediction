@@ -16,6 +16,8 @@ This project was the final project of Data Science Specialization by John Hopkin
 * Use of Katz Backoff Algorithm
 * Application Development
 
-# How to use App
+# Word Prediction Algorithm
+* The app predicts next word when user input a word or partial sentence, the algorithm uses quadgram if the evidence is sufficient      otherwise it uses trigram, otherwise bigram then unigram. It continue backing off until it reach a history that has some counts. 
+
 
 
