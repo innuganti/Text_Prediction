@@ -5,19 +5,12 @@
 (library(stringr))
 (library(shiny))
 
-
-setwd('C:/Users/innugantii/Desktop/Indu/Coursera/Project Final/final/en_US')
-
-# source
-source('C:/Users/innugantii/Desktop/Indu/Coursera/Project Final/final/en_US/Cleansing.R')
-source('C:/Users/innugantii/Desktop/Indu/Coursera/Project Final/final/en_US/Predict_backoff_Algo.R')
-
 # load N_Gram Data frame files
 
-load("fDF1.RData");
-load("fDF2.RData");
-load("fDF3.RData");
-load("fDF4.RData");
+load("unigram.RData");
+load("bigram.RData");
+load("trigram.RData");
+load("quadgram.RData");
 
 mesg <- as.character(NULL);msg <- ""
 
